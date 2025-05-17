@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>التعرف على المستخدم</title>
+</head>
+<body>
+  <h2 id="welcome"></h2>
+
+  <script>
+    function generateUUID() {
+      // توليد معرف فريد (نسخة مبسطة)
+      return 'xxxx-4xxx-yxxx-xxxx'.replace(/[xy]/g, function(c) {
+        let r = Math.random() * 16 | 0;
+        let v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    function identifyUser() {
+      let userId = localStorage.getItem("userId");
+      if (!userId) {
+        // أول زيارة للمستخدم
+        userId = generateUUID();
+        localStorage.setItem("userId", userId);
+        document.getElementById("welcome").innerText = "مرحبًا بك لأول مرة!";
+      } else {
+        // زيارة متكررة
+        document.getElementById("welcome").innerText = "مرحبًا بعودتك! معرفك: " + userId;
+      }
+    }
+
+    identifyUser();
+  </script>
+</body>
+</html>

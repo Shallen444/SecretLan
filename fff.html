@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>صفحة المشارك</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    button {
+      padding: 10px;
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h1>نتيجة السحب</h1>
+  <h2 id="participantName"></h2>
+  <p id="giftedTo"></p>
+
+  <!-- زر العودة للصفحة الرئيسية -->
+  <button onclick="goBack()">العودة إلى الصفحة الرئيسية</button>
+
+  <script>
+    // جلب البيانات من رابط URL
+    function getQueryParam(param) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(param);
+    }
+
+    // التحقق إذا كان الرابط يحتوي على اسم المشارك
+    const participantName = getQueryParam("name");
+    
+    if (participantName) {
+      // عرض اسم المشارك
+      document.getElementById("participantName").textContent = `مرحبًا، ${participantName}!`;
+
+      // جلب القيود من localStorage
+      const conflicts = JSON.parse(localStorage.getItem('conflicts')) || [];
+
+      // البحث عن القيود للمشارك
+      const conflict = conflicts.find(conf => conf.participant1 === participantName || conf.participant2 === participantName);
+      
+      if (conflict) {
+        // عرض من الذي لا يهديه المشارك
+        const otherParticipant = (conflict.participant1 === participantName) ? conflict.participant2 : conflict.participant1;
+        document.getElementById("giftedTo").textContent = `أنت لا تهدي ${otherParticipant}`;
+      } else {
+        document.getElementById("giftedTo").textContent = "لا توجد قيود خاصة بك.";
+      }
+    } else {
+      alert("رابط غير صالح أو لم يتم تمرير اسم المشارك.");
+    }
+
+    // العودة إلى الصفحة الرئيسية
+    function goBack() {
+      window.location.href = "index.html"; // الصفحة الرئيسية أو أي صفحة أخرى تودين العودة إليها
+    }
+  </script>
+</body>
+</html>

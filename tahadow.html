@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>إدخال الأسماء - تهادوا</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    input[type="text"] {
+      padding: 10px;
+      font-size: 18px;
+      margin: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-top: 20px;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 20px;
+    }
+    li {
+      font-size: 18px;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>إدخال الأسماء</h1>
+  <label for="singleName">أدخل اسم:</label>
+  <input type="text" id="singleName" />
+  <button onclick="addName()">إضافة اسم</button>
+
+  <h3>قائمة الأسماء:</h3>
+  <ul id="namesList"></ul>
+
+  <button onclick="saveGroup()">حفظ المجموعة</button>
+  <button id="conflictBtn" style="display: none;" onclick="goToConflictsPage()">الانتقال للقيود</button>
+  <p id="sessionLink"></p>
+
+  <script>
+    let currentNames = [];
+
+    // تحميل الأسماء المخزنة في localStorage عند تحميل الصفحة
+    window.onload = () => {
+      const storedNames = localStorage.getItem("names");
+      if (storedNames) {
+        currentNames = JSON.parse(storedNames);
+        renderNames();
+      }
+    };
+
+    function addName() {
+      const nameInput = document.getElementById('singleName');
+      const name = nameInput.value.trim();
+
+      if (name) {
+        currentNames.push(name);  // إضافة الاسم
+        renderNames();
+        nameInput.value = '';  // مسح الحقل بعد الإضافة
+      } else {
+        alert("من فضلك، أدخل اسمًا.");
+      }
+    }
+
+    // دالة لعرض الأسماء في القائمة
+    function renderNames() {
+      const list = document.getElementById('namesList');
+      list.innerHTML = '';  // إفراغ القائمة قبل إعادة تحميل الأسماء
+
+      currentNames.forEach((name, index) => {
+        const li = document.createElement('li');
+        li.textContent = name;
+
+        const removeBtn = document.createElement('span');
+        removeBtn.textContent = ' ×';
+        removeBtn.classList.add('remove-btn');
+        removeBtn.onclick = () => removeName(index);
+        
+        li.appendChild(removeBtn);
+        list.appendChild(li);
+      });
+    }
+
+    // دالة لحذف اسم من القائمة
+    function removeName(index) {
+      currentNames.splice(index, 1);
+      renderNames();
+    }
+
+    // دالة لحفظ الأسماء في localStorage
+    async function saveGroup() {
+      if (currentNames.length < 2) {
+        alert("يجب إضافة اسمين على الأقل.");
+        conflictBtn.style.display = "none";
+        return;
+      }
+
+      localStorage.setItem("names", JSON.stringify(currentNames));
+      await updateSession();
+      alert("تم حفظ المجموعة بنجاح!");
+      const shareLink = localStorage.getItem("shareLink");
+      document.getElementById("sessionLink").innerHTML =
+          `<strong>رابط الجلسة:</strong> <a href="${shareLink}" target="_blank">${shareLink}</a>`;
+      conflictBtn.style.display = "inline-block";
+    }
+
+    async function updateSession() {
+      const sessionId = localStorage.getItem("sessionId");
+      const JSONBIN_URL = localStorage.getItem("JSONBIN_URL");
+      const JSONBIN_API_KEY = localStorage.getItem("JSONBIN_API_KEY");
+      const names = JSON.parse(localStorage.getItem("names"));
+      const availableNames = JSON.parse(localStorage.getItem("availableNames"));
+      const conflicts = JSON.parse(localStorage.getItem("conflicts"));
+      const drawnBy = JSON.parse(localStorage.getItem("drawnBy"));
+      if (!sessionId) return;
+
+      const updatedData = {
+        names,
+        availableNames,
+        conflicts,
+        drawnBy
+      };
+
+      try {
+        await fetch(`${JSONBIN_URL}/${sessionId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Master-Key": JSONBIN_API_KEY
+          },
+          body: JSON.stringify(updatedData)
+        });
+      } catch (err) {
+        console.error("فشل تحديث الجلسة:", err);
+      }
+    }
+
+    function goToConflictsPage() {
+      if (currentNames.length < 2) {
+        alert("يجب إضافة اسمين على الأقل قبل إضافة القيود.");
+        return;
+      }
+      window.location.href = "conflicts.html"; // الانتقال إلى صفحة القيود
+    }
+  </script>
+
+</body>
+</html>

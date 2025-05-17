@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>القيود بين المشاركين - تهادوا</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    select, label, button {
+      font-size: 18px;
+      margin: 10px;
+    }
+    .conflict-item {
+      margin: 10px;
+    }
+    .toggle-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>حدد القيود بين المشاركين</h1>
+
+  <div>
+    <label for="participant1">المشارك الأول:</label>
+    <select id="participant1"></select>
+
+    <label for="participant2">المشارك الثاني:</label>
+    <select id="participant2"></select>
+  </div>
+
+  <div class="toggle-container">
+    <label>نوع القيد: </label>
+    <input type="checkbox" id="conflictTypeToggle" />
+    <label for="conflictTypeToggle" id="conflictTypeLabel">One-way</label>
+  </div>
+
+  <button onclick="addConflict()">إضافة قيد</button>
+
+  <h3>القيود المضافة:</h3>
+  <div id="conflictList"></div>
+
+  <button onclick="saveConflicts()">حفظ القيود</button>
+  <button onclick="continueWithoutConflicts()">استمرار بدون قيود</button>
+
+  <script>
+    let participants = [];
+    let conflicts = [];
+
+    window.onload = () => {
+      const stored = JSON.parse(localStorage.getItem("names"));
+      if (stored && Array.isArray(stored)) {
+        participants = stored;
+        renderParticipants();
+      } else {
+        alert("لم يتم العثور على أسماء. الرجاء العودة للصفحة السابقة.");
+        window.location.href = "tahadow.html";
+      }
+    };
+
+    function renderParticipants() {
+      const select1 = document.getElementById("participant1");
+      const select2 = document.getElementById("participant2");
+
+      participants.forEach(name => {
+        const option1 = document.createElement("option");
+        option1.value = name;
+        option1.textContent = name;
+        select1.appendChild(option1);
+
+        const option2 = document.createElement("option");
+        option2.value = name;
+        option2.textContent = name;
+        select2.appendChild(option2);
+      });
+    }
+
+    document.getElementById("conflictTypeToggle").addEventListener("change", function () {
+      document.getElementById("conflictTypeLabel").textContent = this.checked ? "Two-way" : "One-way";
+    });
+
+    function addConflict() {
+      const p1 = document.getElementById("participant1").value;
+      const p2 = document.getElementById("participant2").value;
+      const type = document.getElementById("conflictTypeToggle").checked ? "Two-way" : "One-way";
+
+      if (p1 === p2) {
+        alert("لا يمكن أن يكون المشاركان نفس الشخص.");
+        return;
+      }
+
+      conflicts.push({ participant1: p1, participant2: p2, conflictType: type });
+      renderConflicts();
+    }
+
+    function renderConflicts() {
+      const list = document.getElementById("conflictList");
+      list.innerHTML = "";
+
+      conflicts.forEach(c => {
+        const div = document.createElement("div");
+        div.className = "conflict-item";
+
+        if (c.conflictType === "Two-way") {
+          div.innerHTML = `${c.participant1} لا يهدي ${c.participant2}<br>${c.participant2} لا يهدي ${c.participant1}`;
+        } else {
+          div.textContent = `${c.participant1} لا يهدي ${c.participant2}`;
+        }
+
+        list.appendChild(div);
+      });
+    }
+
+    async function saveConflicts() {
+      if (conflicts.length === 0) {
+        alert("أضف على الأقل قيداً واحداً.");
+        return;
+      }
+
+      localStorage.setItem("conflicts", JSON.stringify(conflicts));
+      await updateSession();
+
+      window.location.href = "ready.html";
+    }
+
+    function continueWithoutConflicts() {
+      window.location.href = "ready.html";
+    }
+
+    async function updateSession() {
+      const sessionId = localStorage.getItem("sessionId");
+      const JSONBIN_URL = localStorage.getItem("JSONBIN_URL");
+      const JSONBIN_API_KEY = localStorage.getItem("JSONBIN_API_KEY");
+      const names = JSON.parse(localStorage.getItem("names"));
+      const availableNames = JSON.parse(localStorage.getItem("availableNames"));
+      const conflicts = JSON.parse(localStorage.getItem("conflicts"));
+      const drawnBy = JSON.parse(localStorage.getItem("drawnBy"));
+      if (!sessionId) return;
+
+      const updatedData = {
+        names,
+        availableNames,
+        conflicts,
+        drawnBy
+      };
+
+      try {
+        await fetch(`${JSONBIN_URL}/${sessionId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Master-Key": JSONBIN_API_KEY
+          },
+          body: JSON.stringify(updatedData)
+        });
+      } catch (err) {
+        console.error("فشل تحديث الجلسة:", err);
+      }
+    }
+  </script>
+</body>
+</html>

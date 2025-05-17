@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>سحب Secret Santa</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      text-align: center;
+    }
+    .draw-section {
+      margin-top: 50px;
+    }
+    .result {
+      margin-top: 30px;
+      font-size: 22px;
+      color: green;
+    }
+    .btn-draw {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .btn-draw:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎁 اسحب هديتك السرية 🎁</h1>
+
+  <div class="draw-section">
+    <label for="participantSelect">اختر اسمك:</label><br><br>
+    <select id="participantSelect"></select><br><br>
+
+    <button class="btn-draw" onclick="drawRandomName()">اسحب</button>
+
+    <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    const participantSelect = document.getElementById('participantSelect');
+    const resultDiv = document.getElementById('result');
+    const allNames = JSON.parse(localStorage.getItem("names"));
+    const allConflicts = JSON.parse(localStorage.getItem("conflicts")) || [];
+    if (!localStorage.getItem("availableNames")) {
+      localStorage.setItem("availableNames", JSON.stringify(allNames));
+    }
+    if (!localStorage.getItem("drawnBy")) {
+      localStorage.setItem("drawnBy", JSON.stringify([]));
+    }
+
+    participantSelect.innerHTML = ''; // إفراغ القائمة
+    
+    allNames.forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      participantSelect.appendChild(option);
+    });
+    
+    async function drawRandomName() {
+      const currentName = participantSelect.value;
+      if (!currentName) {
+        alert("يرجى اختيار اسمك.");
+        return;
+      }
+
+      const drawnBy = JSON.parse(localStorage.getItem("drawnBy")) || [];
+      console.log(drawnBy)
+      if (drawnBy.includes(currentName)) {
+        resultDiv.textContent = "لقد قمت بالسحب مسبقًا.";
+        return;
+      }
+      
+      const availableNames = JSON.parse(localStorage.getItem("availableNames")) || [];
+
+      // أسماء لا يمكن سحبها لهذا المستخدم
+      const forbidden = new Set();
+      forbidden.add(currentName); // لا يسحب نفسه
+
+      // تحليل التعارضات
+      allConflicts.forEach(conflict => {
+        if (
+          conflict.conflictType === "One-way" &&
+          conflict.participant1 === currentName
+        ) {
+          //participant1 لا يسحب participant2
+          forbidden.add(conflict.participant2);
+        } else if (
+          conflict.conflictType === "Two-way" &&
+          (conflict.participant1 === currentName || conflict.participant2 === currentName)
+        ) {
+          // كلا الطرفين لا يسحب الآخر
+          forbidden.add(conflict.participant1);
+          forbidden.add(conflict.participant2);
+        }
+      });
+
+      // فلترة الأسماء المسموحة
+      const candidates = availableNames.filter(name => !forbidden.has(name));
+
+      if (candidates.length === 0) {
+        resultDiv.textContent = "لا توجد أسماء متاحة للسحب.";
+        return;
+      }
+
+      const drawnName = candidates[Math.floor(Math.random() * candidates.length)];
+
+      // تحديث القائمة المتاحة للسحب
+      const updatedAvailable = availableNames.filter(name => name !== drawnName);
+      localStorage.setItem("availableNames", JSON.stringify(updatedAvailable));
+
+      // تسجيل من قام بالسحب
+      drawnBy.push(currentName);
+      localStorage.setItem("drawnBy", JSON.stringify(drawnBy));
+
+      await updateSession();
+
+      resultDiv.innerHTML = `
+        <p>🎉 تهانينا ${currentName}!</p>
+        <p>أنت ستُهدي: <strong>${drawnName}</strong> 🎁</p>
+        <p>حد الهدية: <strong></strong></p>
+      `;
+    }
+
+    async function updateSession() {
+      const sessionId = localStorage.getItem("sessionId");
+      const JSONBIN_URL = localStorage.getItem("JSONBIN_URL");
+      const JSONBIN_API_KEY = localStorage.getItem("JSONBIN_API_KEY");
+      const names = JSON.parse(localStorage.getItem("names"));
+      const availableNames = JSON.parse(localStorage.getItem("availableNames"));
+      const conflicts = JSON.parse(localStorage.getItem("conflicts"));
+      const drawnBy = JSON.parse(localStorage.getItem("drawnBy"));
+      if (!sessionId) return;
+
+      const updatedData = {
+        names,
+        availableNames,
+        conflicts,
+        drawnBy
+      };
+
+      try {
+        await fetch(`${JSONBIN_URL}/${sessionId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Master-Key": JSONBIN_API_KEY
+          },
+          body: JSON.stringify(updatedData)
+        });
+      } catch (err) {
+        console.error("فشل تحديث الجلسة:", err);
+      }
+    }
+  </script>
+
+</body>
+</html>
